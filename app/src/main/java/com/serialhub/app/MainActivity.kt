@@ -1,5 +1,6 @@
 package com.serialhub.app
 
+import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.view.View
@@ -7,26 +8,22 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
-import androidx.appcompat.app.AppCompatActivity
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
 
     private lateinit var webView: WebView
-    private var customView: View? = null
-    private var customViewContainer: FrameLayout? = null
-    private var originalOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    private var fullscreenView: View? = null
+    private var fullscreenContainer: FrameLayout? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        originalOrientation = requestedOrientation
 
         webView = WebView(this)
 
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
-            mediaPlaybackRequiresUserGesture = false
+            mediaPlaybackRequiresUserGesture = true
             loadWithOverviewMode = true
             useWideViewPort = true
         }
@@ -39,15 +36,16 @@ class MainActivity : AppCompatActivity() {
                 view: View?,
                 callback: CustomViewCallback?
             ) {
-                if (customView != null) {
-                    callback?.onCustomViewHidden()
-                    return
-                }
+                if (view == null) return
 
-                customView = view
-                customViewContainer = FrameLayout(this@MainActivity)
+                fullscreenView = view
 
-                customViewContainer?.addView(
+                fullscreenContainer = FrameLayout(this@MainActivity)
+                fullscreenContainer!!.setBackgroundColor(
+                    android.graphics.Color.BLACK
+                )
+
+                fullscreenContainer!!.addView(
                     view,
                     FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.MATCH_PARENT,
@@ -55,16 +53,17 @@ class MainActivity : AppCompatActivity() {
                     )
                 )
 
-                setContentView(customViewContainer)
+                setContentView(fullscreenContainer)
 
                 requestedOrientation =
                     ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             }
 
             override fun onHideCustomView() {
-                customViewContainer?.removeAllViews()
-                customViewContainer = null
-                customView = null
+                fullscreenContainer?.removeAllViews()
+
+                fullscreenContainer = null
+                fullscreenView = null
 
                 setContentView(webView)
 
@@ -79,9 +78,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (customView != null) {
-            webView.webChromeClient?.onHideCustomView()
-        } else if (webView.canGoBack()) {
+
+        if (fullscreenView != null) {
+            webView.webChromeClient?.let {
+                if (it is WebChromeClient) {
+                    // Fullscreen will be closed by the player.
+                }
+            }
+
+            fullscreenContainer?.removeAllViews()
+            fullscreenContainer = null
+            fullscreenView = null
+
+            setContentView(webView)
+
+            requestedOrientation =
+                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
+            return
+        }
+
+        if (webView.canGoBack()) {
             webView.goBack()
         } else {
             super.onBackPressed()
